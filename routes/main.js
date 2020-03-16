@@ -14,8 +14,6 @@ app.post('/selectTicker', function (req, res) {
         req.body.isin
     ]];
 
-    console.log(data);
-
     req.getConnection(function (error, con) {
         if (error) throw error;
         console.log("Connected!");
@@ -39,29 +37,13 @@ app.post('/saveTickerData', function (req, res) {
     let tickerInfo=[];
     let weekData=req.body.weekData;
     let divData=req.body.divData;
-    console.log(info);
-    let lDebt=req.body.lDebtData;
-    let shares=req.body.sharesData;
-    let margin=req.body.marginData;
-
-    if(shares[0][2]>lDebt[0][2]){
-        lDebt.unshift([undefined,undefined,undefined]);
-    }
-       
-    for(var a=0;a<shares.length;a++){
-        shares[a].push(lDebt[a][0]);
-    }
-
-    let yearData=shares;
-
-    // for(key in info){
-    //     tickerInfo.push(info[key]);
-    // }
+    let yearData=req.body.combined;
 
     tickerInfo=[
         info.name,
         info.id,
         info.country,
+        info.countryName,
         info.dividendType,
         info.sector,
         info.isin,
@@ -75,44 +57,6 @@ app.post('/saveTickerData', function (req, res) {
         info.insiderStake,
     ]
 
-
-    let ticker=req.body.active.id;
-    let earnings=req.body.epsData;
-    let fcf=req.body.fcfData;
-    let debt=req.body.qDebtData;
-    let ebitda=req.body.ebitData;
-    
-    if(earnings[0][3]>fcf[0][7]){
-        fcf.unshift([undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined,])
-    }
-    
-    if(earnings[0][2]>debt[0][5]){
-        debt.unshift([undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined,])
-    }
-    
-    if(earnings[0][2]>margin[0][5]){
-        margin.unshift([undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined,])
-    }
-
-    for(var q=0;q<20;q++){
-        fcf.push([undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined,]);
-        debt.push([undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined,]);
-        margin.push([undefined,undefined,undefined,undefined,undefined,undefined,undefined,undefined,]);
-    }
-
-    for(var i=0;i<earnings.length;i++){        
-        earnings[i].push(
-            fcf[i][1],
-            fcf[i][2],
-            debt[i][0],
-            debt[i][1],
-            debt[i][2],
-            margin[i][0],
-            margin[i][1],
-            margin[i][2],
-        )
-    }
-    
     req.getConnection(function (error, con) {   
         async function getID(){
             return new Promise(resolve =>{
@@ -127,23 +71,10 @@ app.post('/saveTickerData', function (req, res) {
             })
         }
 
-        async function saveEarnings(earnings,ids){
-            
-            for(var i=0;i<earnings.length;i++){
-                earnings[i].push(ids);
-            }
-            return new Promise(resolve =>{
-                let sql = "INSERT INTO qfinancials (eps,year,month,quarter,idnumber,fcf,pfcf,currentassets,currentliabilities,cratio,revenue,ttmnetincome,netmargin,ticker_id) VALUES ?";
-                con.query(sql, [earnings], function (err, result) {
-                    if (err) throw err;
-                    resolve("Qfifanancials inserted: " + result.affectedRows);
-                }); 
-            })
-        }
-
         async function createTicker(tickerInfo){
+        
             return new Promise(resolve =>{
-                var sql = "INSERT INTO tickers (name,ticker, country, dividendType, sector, isin,industry ,subindustry,founded, address, website, employees,description,insiderStake) VALUES ?";
+                var sql = "INSERT INTO tickers (name,ticker, country,countryName, dividendType, sector, isin,industry ,subindustry,founded, address, website, employees,description,insiderStake) VALUES ?";
                 con.query(sql,[[tickerInfo]], function (err, result, fields) {
                     if (err) throw error;
                     resolve('Ticker created');
@@ -152,11 +83,13 @@ app.post('/saveTickerData', function (req, res) {
         }
 
         async function saveYearData(yearData,ids){
+            // yearData=yearData.shift();
+            yearData.shift();
             for(var i=0;i<yearData.length;i++){
                 yearData[i].push(ids);
             }
             return new Promise(resolve =>{
-                var sql = "INSERT INTO yeardata (shares,idnumber, year, ldebt, ticker_id) VALUES ?";
+                var sql = "INSERT INTO yeardata (EPSEarningsPerShare,BasicEPS,SharesOutstanding,BasicSharesOutstanding,EBIT,EBITDA,NetIncome,IncomeFromDiscontinuedOperations,IncomeFromContinuousOperations,OtherIncome,IncomeAfterTaxes,IncomeTaxes,PreTaxIncome,TotalNonOperatingIncomeExpense,OperatingIncome,OperatingExpenses,OtherOperatingIncomeOrExpenses,SGAExpenses,ResearchAndDevelopmentExpenses,GrossProfit,CostOfGoodsSold,Revenue,year,month,day,quarter,TotalLiabilitiesAndShareHoldersEquity,ShareHolderEquity,OtherShareHoldersEquity,ComprehensiveIncome,RetainedEarnings,CommonStockNet,TotalLiabilities,TotalLongTermLiabilities,OtherNonCurrentLiabilities,LongTermDebt,TotalCurrentLiabilities,TotalAssets,TotalLongTermAssets,OtherLongTermAssets,GoodwillAndIntangibleAssets,LongTermInvestments,PropertyPlantAndEquipment,TotalCurrentAssets,OtherCurrentAssets,Inventory,NotesAndLoansReceivable,CashOnHand,CommonStockDividendsPaid,StockBasedCompensation,NetCashFlow,CashFlowFromFinancialActivities,FinancialActivitiesOther,TotalCommonAndPreferredStockDividendsPaid,NetTotalEquityIssuedRepurchased,NetCommonEquityIssuedRepurchased,DebtIssuanceRetirementNetTotal,NetCurrentDebt,NetLongTermDebt,CashFlowFromInvestingActivities,InvestingActivitiesOther,NetChangeInInvestmentsTotal,NetChangeInLongTermInvestments,NetChangeInShorttermInvestments,NetAcquisitionsDivestitures,NetChangeInIntangibleAssets,NetChangeInPropertyPlantAndEquiment,CashFlowFromOperatingActivities,TotalChangeInAssetsLiabilities,ChangeInAssetsLiabilities,ChangeInAccountsPayable,ChangeInInventories,ChangeInAccountsReceivable,TotalNonCashItems,OtherNonCashItems,TotalDepreciationAndAmortizationCashFlow,NetIncomeLoss,FreeCashFlowPerShare,OperatingCashFlowPerShare,BookValuePerShare,ROIReturnOnInvestment,ROAReturnOnAssets,ReturnOnTangibleEquity,ROEReturnOnEquity,DaysSalesInReceivables,ReceiveableTurnover,InventoryTurnoverRatio,AssetTurnover,NetProfitMargin,PreTaxProfitMargin,EBITDAMargin,EBITMargin,OperatingMargin,GrossMargin,DebtEquityRatio,LongtermDebtCapital,CurrentRatio,ticker_id) VALUES ?";
                 con.query(sql,[yearData], function (err, result, fields) {
                     if (err) throw error;
                     resolve("Yeardata inserted: " + result.affectedRows);
@@ -184,7 +117,6 @@ app.post('/saveTickerData', function (req, res) {
             return new Promise(resolve =>{
                 var sql = "INSERT INTO weeklydata (open,high,low,close,volume,dividend,year,month,day,quarter,ticker_id) VALUES ?";
                 con.query(sql,[weekData], function (err, result, fields) {
-                    // console.log(err);
                     if (err) throw error;
                     resolve("Weekdata data inserted: " + result.affectedRows);
                 });
@@ -200,17 +132,6 @@ app.post('/saveTickerData', function (req, res) {
                 con.query(sql,[divData], function (err, result, fields) {
                     if (err) throw error;
                     resolve("Dividend data inserted: " + result.affectedRows);
-                });
-            })
-        }
-
-        async function deleteEarnings(ids){
-            return new Promise(resolve =>{
-                var sql = "DELETE FROM qfinancials WHERE ticker_id = '"+ids+"'";
-                con.query(sql, function (err, result) {
-                    if (err) throw err;
-                    console.log("Number of records deleted: " + result.affectedRows);
-                    resolve('Previous financials deleted');
                 });
             })
         }
@@ -259,25 +180,23 @@ app.post('/saveTickerData', function (req, res) {
             })
         }  
 
-        async function saveDataToDB(earnings,tickerInfo,yearData,insider,weekData,divData){
+        async function saveDataToDB(tickerInfo,insider,weekData,divData,yearData){
             let ids = await getID();
             if(ids[tickerInfo[1]]===undefined){
                 console.log(await createTicker(tickerInfo));
                 ids = await getID();
             }
             console.log(ids[tickerInfo[1]])
-            console.log(await deleteEarnings(ids[tickerInfo[1]]));
             console.log(await deleteYearData(ids[tickerInfo[1]]));
             console.log(await deleteInsiderData(ids[tickerInfo[1]]));
             console.log(await deleteWeekData(ids[tickerInfo[1]]));
             console.log(await deleteDivData(ids[tickerInfo[1]]));
-            console.log(await saveEarnings(earnings,ids[tickerInfo[1]]));
             console.log(await saveYearData(yearData,ids[tickerInfo[1]]));
             console.log(await saveInsiderData(insider,ids[tickerInfo[1]]));
             console.log(await saveWeekData(weekData,ids[tickerInfo[1]]));
             console.log(await saveDivData(divData,ids[tickerInfo[1]]));
         }
-        saveDataToDB(earnings,tickerInfo,yearData,insider,weekData,divData);
+        saveDataToDB(tickerInfo,insider,weekData,divData,yearData);
     });
 })
 
